@@ -4,16 +4,61 @@ const { buildSchema } = require('graphql');
 const cors = require('cors')
 
 const schema = buildSchema(`
+  type Category {
+    id: ID!
+    name: String
+  }
+
+  type Product {
+    id: ID!
+    name: String
+    price: Float
+    description: String
+    category: Category
+  }
+
   type Query {
-    hello: String,
+    products: [Product]
+    categories: [Category]
+  }
+
+  input ProductInput {
+    name: String
+    price: Float
+    category: ID!
+    description: String
+  }
+
+  input CategoryInput {
+    name: String
+  }
+
+  type Mutation {
+    createCategory(input: CategoryInput): Category
+    createProduct(input: ProductInput): Product
   }
 `)
 
+
+let products = [];
+let categories = [];
+
 const root = {
-  hello: () => {
-    return 'hello world';
+  products: () => products,
+  categories: () => categories,
+  createCategory: ({ input }) => {
+    const id = require('crypto').randomBytes(10).toString('hex');
+    categories.push({ id, ...input })
+
+    return categories.find(category => category.id === id);
+  },
+  createProduct: ({ input }) => {
+    const id = require('crypto').randomBytes(10).toString('hex');
+    products.push({ id, ...input })
+
+    return products.find(product => product.id === id);
   }
-}
+} 
 
 const app = express();
 
