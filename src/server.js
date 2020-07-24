@@ -1,70 +1,83 @@
 const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
-const { buildSchema } = require('graphql');
+const { GraphQLSchema, GraphQLObjectType, GraphQLString, GraphQLID, GraphQLList } = require('graphql');
 const cors = require('cors')
 
-const schema = buildSchema(`
-  type Category {
-    id: ID!
-    name: String
-  }
-
-  type Product {
-    id: ID!
-    name: String
-    price: Float
-    description: String
-    category: Category
-  }
-
-  type Query {
-    products: [Product]
-    categories: [Category]
-  }
-
-  input ProductInput {
-    name: String
-    price: Float
-    category: ID!
-    description: String
-  }
-
-  input CategoryInput {
-    name: String
-  }
-
-  type Mutation {
-    createCategory(input: CategoryInput): Category
-    createProduct(input: ProductInput): Product
-  }
-`)
-
-
-let products = [];
-let categories = [];
-
-const root = {
-  Product: {
-    category: ({ product }) => {
-      console.log('product', product)
-      return categories.find(category => category.id === product.category);
+const Category = new GraphQLObjectType({
+  name: 'Category',
+  fields: {
+    id: {
+      type: GraphQLID,
+      resolve: (category) => category.id,
+    },
+    name: {
+      type: GraphQLString,
+      resolve: (category) => { 
+        return category.name
+      },
     }
-  },
-  products: () => products,
-  categories: () => categories,
-  createCategory: ({ input }) => {
-    const id = require('crypto').randomBytes(10).toString('hex');
-    categories.push({ id, ...input })
-
-    return categories.find(category => category.id === id);
-  },
-  createProduct: ({ input }) => {
-    const id = require('crypto').randomBytes(10).toString('hex');
-    products.push({ id, ...input })
-
-    return products.find(product => product.id === id);
   }
-} 
+})
+
+const Product = new GraphQLObjectType({
+  name: 'Product',
+  fields: {
+    id: {
+      type: GraphQLID,
+      resolve: (product) => product.id,
+    },
+    name: {
+      type: GraphQLString,
+      resolve: (product) => { 
+        return product.name
+      },
+    },
+    category: {
+      type: Category,
+      resolve: (product) => categories.find(category => category.id === product.category)
+    }
+  }
+})
+
+let categories = [
+  {
+    id: 3,
+    name: 'Nike',
+  }
+]
+
+let products = [
+  {
+    id: 1,
+    name: 'Air Max',
+    category: 3
+  }
+]
+
+const QueryType = new GraphQLObjectType({
+  name: 'Query',
+  fields: {
+    product: {
+      type: Product,
+      args: {
+        id: {
+          type: GraphQLID
+        }
+      },
+      resolve: (_, args) => products.find(product => product.id === parseInt(args.id))
+    },
+    products: {
+      type: GraphQLList(Product),
+      resolve: () => products,
+    }
+  }
+})
+
+
+const schema = new GraphQLSchema({
+  query: QueryType,
+  // mutation: MutationType
+})
 
 const app = express();
 
@@ -72,7 +85,6 @@ app.use(cors())
 
 app.use('/graphql', graphqlHTTP({
   schema,
-  rootValue: root,
   graphiql: true,
 }))
 
