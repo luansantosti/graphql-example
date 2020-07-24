@@ -44,6 +44,12 @@ let products = [];
 let categories = [];
 
 const root = {
+  Product: {
+    category: ({ product }) => {
+      console.log('product', product)
+      return categories.find(category => category.id === product.category);
+    }
+  },
   products: () => products,
   categories: () => categories,
   createCategory: ({ input }) => {
