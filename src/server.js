@@ -56,7 +56,7 @@ let products = [
 
 const QueryType = new GraphQLObjectType({
   name: 'Query',
-  fields: {
+  fields: () => ({
     product: {
       type: Product,
       args: {
@@ -69,14 +69,83 @@ const QueryType = new GraphQLObjectType({
     products: {
       type: GraphQLList(Product),
       resolve: () => products,
+    },
+    categories: {
+      type: GraphQLList(Category),
+      resolve: () => categories,
     }
-  }
+  })
+})
+
+const ProductInputType = {
+  name: {
+    type: GraphQLString,
+  },
+  category: {
+    type: GraphQLID,
+  },
+}
+
+const MutationType = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: () => ({
+    CategoryAddMutation: {
+      type: Category,
+      args: {
+        name: {
+          type: GraphQLString,
+        } 
+      },
+      resolve: (_, args) => {
+        const { name } = args;
+        const id = require('crypto').randomBytes(16).toString("hex");
+
+        categories.push({ id, name });
+
+        return categories.find(category => category.id === id)
+      }    
+    },
+    ProductAddMutation: {
+      type: Product,
+      args: {
+        ...ProductInputType,
+      },
+      resolve: (_, args) => {
+        const { name, category } = args;
+        const id = require('crypto').randomBytes(16).toString("hex");
+  
+        products.push({ id, name, category })
+  
+        return products.find(product => product.id === id);
+      }
+    },
+    ProductEditMutation: {
+      type: Product,
+      args: {
+        id: {
+          type: GraphQLID
+        },
+        ...ProductInputType
+      },
+      resolve: (_, args) => {
+        const updateProduct = {
+          ...args,
+        }
+
+        const index = products.findIndex(product => product.id === args.id);
+
+        products[index] = updateProduct;
+
+        return products[index];
+      }
+    }
+  }),
 })
 
 
 const schema = new GraphQLSchema({
   query: QueryType,
-  // mutation: MutationType
+  mutation: MutationType
 })
 
 const app = express();
