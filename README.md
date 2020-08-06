@@ -1,7 +1,7 @@
 # graphql-example
-Simple implementation of a graphql server
+Simple implementation of a graphql server, it will be updated with improvements/examples frequently. 
 
-You can use the `serverMock` to use with some mock arrays or `serverWithMongo` to use with mongoose, just change it on package.json.
+You can use the `serverMock` to use it with some mock arrays or `serverWithMongo` to use with mongoose, just change it on package.json.
 
 Install dependencies
 `yarn`
