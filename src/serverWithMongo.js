@@ -2,8 +2,22 @@ const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 const { GraphQLSchema, GraphQLObjectType, GraphQLString, GraphQLID, GraphQLList } = require('graphql');
 const cors = require('cors')
+const mongoose = require('mongoose');
 
-const Category = new GraphQLObjectType({
+const Category = require('./models/CategoryModel');
+const Product = require('./models/ProductModel');
+
+mongoose.connect('mongodb://localhost/products', { useNewUrlParser: true });
+
+const db = mongoose.connection;
+
+if(!db) {
+  console.log('Error connecting db');
+} else {
+  console.log('DB connected succesfully')
+}
+
+const CategoryType = new GraphQLObjectType({
   name: 'Category',
   fields: {
     id: {
@@ -19,7 +33,7 @@ const Category = new GraphQLObjectType({
   }
 })
 
-const Product = new GraphQLObjectType({
+const ProductType = new GraphQLObjectType({
   name: 'Product',
   fields: {
     id: {
@@ -33,46 +47,31 @@ const Product = new GraphQLObjectType({
       },
     },
     category: {
-      type: Category,
-      resolve: (product) => categories.find(category => category.id === product.category)
+      type: CategoryType,
+      resolve: (product) => Category.findOne({ _id: product.category })
     }
   }
 })
-
-let categories = [
-  {
-    id: 3,
-    name: 'Nike',
-  }
-]
-
-let products = [
-  {
-    id: 1,
-    name: 'Air Max',
-    category: 3
-  }
-]
 
 const QueryType = new GraphQLObjectType({
   name: 'Query',
   fields: () => ({
     product: {
-      type: Product,
+      type: ProductType,
       args: {
         id: {
           type: GraphQLID
         }
       },
-      resolve: (_, args) => products.find(product => product.id === parseInt(args.id))
+      resolve: (_, args) => Product.findById({ _id: args.id })
     },
     products: {
-      type: GraphQLList(Product),
-      resolve: () => products,
+      type: GraphQLList(ProductType),
+      resolve: () => Product.find(),
     },
     categories: {
-      type: GraphQLList(Category),
-      resolve: () => categories,
+      type: GraphQLList(CategoryType),
+      resolve: () => Category.find(),
     }
   })
 })
@@ -90,7 +89,7 @@ const MutationType = new GraphQLObjectType({
   name: 'Mutation',
   fields: () => ({
     CategoryAddMutation: {
-      type: Category,
+      type: CategoryType,
       args: {
         name: {
           type: GraphQLString,
@@ -98,47 +97,54 @@ const MutationType = new GraphQLObjectType({
       },
       resolve: (_, args) => {
         const { name } = args;
-        const id = require('crypto').randomBytes(16).toString("hex");
+        
+        const category = new Category({
+          name
+        })
 
-        categories.push({ id, name });
+        category.save();
 
-        return categories.find(category => category.id === id)
+        return category;
       }    
     },
     ProductAddMutation: {
-      type: Product,
+      type: ProductType,
       args: {
         ...ProductInputType,
       },
       resolve: (_, args) => {
         const { name, category } = args;
-        const id = require('crypto').randomBytes(16).toString("hex");
-  
-        products.push({ id, name, category })
-  
-        return products.find(product => product.id === id);
+        
+        const product = new Product({
+          name,
+          category
+        })
+
+        product.save();
+
+        return product;
       }
     },
-    ProductEditMutation: {
-      type: Product,
-      args: {
-        id: {
-          type: GraphQLID
-        },
-        ...ProductInputType
-      },
-      resolve: (_, args) => {
-        const updateProduct = {
-          ...args,
-        }
+    // ProductEditMutation: {
+    //   type: ProductType,
+    //   args: {
+    //     id: {
+    //       type: GraphQLID
+    //     },
+    //     ...ProductInputType
+    //   },
+    //   resolve: (_, args) => {
+    //     const updateProduct = {
+    //       ...args,
+    //     }
 
-        const index = products.findIndex(product => product.id === args.id);
+    //     const index = products.findIndex(product => product.id === args.id);
 
-        products[index] = updateProduct;
+    //     products[index] = updateProduct;
 
-        return products[index];
-      }
-    }
+    //     return products[index];
+    //   }
+    // }
   }),
 })
 
